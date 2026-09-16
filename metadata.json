@@ -1,0 +1,6 @@
+{
+  "name": "Kalkulator Administrasi Kominfo Ormawa",
+  "description": "Kalkulator penilaian administrasi Kominfo untuk Ormawa berdasarkan kelengkapan 4 dokumen utama dan kualitas file.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
