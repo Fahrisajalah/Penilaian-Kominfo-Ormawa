@@ -1,18 +1,42 @@
 import React, { useState } from 'react';
 import { Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { hitungSkorKelengkapan } from '../utils/calculator';
 
-export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
+interface ScoringRulesCardProps {
+  currentDocsCount: number;
+  totalDocs?: number;
+  bobotKelengkapan?: number;
+  bobotKualitas?: number;
+}
+
+export const ScoringRulesCard: React.FC<ScoringRulesCardProps> = ({
   currentDocsCount,
+  totalDocs = 4,
+  bobotKelengkapan = 60,
+  bobotKualitas = 40,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const rules = [
-    { count: 4, score: '10.0', desc: 'Semua 4 dokumen lengkap' },
-    { count: 3, score: '8.0', desc: '3 dokumen lengkap' },
-    { count: 2, score: '5.5', desc: '2 dokumen lengkap' },
-    { count: 1, score: '3.0', desc: '1 dokumen lengkap' },
-    { count: 0, score: '1.0', desc: '0 dokumen (tidak ada sama sekali)' },
-  ];
+  const bKelengkapanRatio = bobotKelengkapan / 100;
+  const bKualitasRatio = bobotKualitas / 100;
+
+  // Bangun aturan dinamis berdasarkan totalDocs
+  const rules = [];
+  for (let c = totalDocs; c >= 0; c--) {
+    const score = hitungSkorKelengkapan(c, totalDocs);
+    const desc =
+      c === totalDocs
+        ? `Semua ${totalDocs} dokumen lengkap`
+        : c === 0
+        ? '0 dokumen (tidak ada sama sekali)'
+        : `${c} dari ${totalDocs} dokumen lengkap`;
+
+    rules.push({
+      count: c,
+      score: score.toFixed(1),
+      desc,
+    });
+  }
 
   return (
     <div
@@ -33,7 +57,7 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
               Pedoman Logika Penilaian Terupdate
             </span>
             <span className="text-xs text-slate-500">
-              Aturan konversi jumlah dokumen (60%) & kualitas file (40%)
+              Aturan konversi {totalDocs} dokumen ({bobotKelengkapan}%) & kualitas file ({bobotKualitas}%)
             </span>
           </div>
         </div>
@@ -46,7 +70,7 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
         <div className="p-5 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-4">
           <div>
             <h5 className="font-semibold text-slate-800 mb-2">
-              1. Tabel Konversi Skor Kelengkapan Dokumen (Bobot 60%):
+              1. Tabel Konversi Skor Kelengkapan Dokumen (Bobot {bobotKelengkapan}%):
             </h5>
             <div className="overflow-x-auto">
               <table className="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
@@ -54,14 +78,14 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
                   <tr>
                     <th className="px-3 py-2">Dokumen Ada</th>
                     <th className="px-3 py-2">Skor Kelengkapan</th>
-                    <th className="px-3 py-2">Kontribusi ke Nilai Akhir (× 0.6)</th>
+                    <th className="px-3 py-2">Kontribusi ke Nilai Akhir (× {bKelengkapanRatio.toFixed(2)})</th>
                     <th className="px-3 py-2">Keterangan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {rules.map((rule) => {
                     const isSelected = currentDocsCount === rule.count;
-                    const contrib = (parseFloat(rule.score) * 0.6).toFixed(2);
+                    const contrib = (parseFloat(rule.score) * bKelengkapanRatio).toFixed(2);
                     return (
                       <tr
                         key={rule.count}
@@ -76,7 +100,7 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
                             {isSelected && (
                               <span className="w-2 h-2 rounded-full bg-emerald-600" />
                             )}
-                            {rule.count} / 4 Dokumen
+                            {rule.count} / {totalDocs} Dokumen
                           </span>
                         </td>
                         <td className="px-3 py-2 font-mono font-semibold">
@@ -96,11 +120,11 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
 
           <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
             <h5 className="font-semibold text-slate-800">
-              2. Skor Kualitas File (Bobot 40%):
+              2. Skor Kualitas File (Bobot {bobotKualitas}%):
             </h5>
             <p className="text-slate-600">
-              Menggunakan nilai input langsung rentang <strong>1.0 s/d 10.0</strong>.
-              Kontribusi nilai dihitung dengan mengalikan skor kualitas dengan <strong>0.4</strong>.
+              Menggunakan nilai input langsung rentang <strong>1.0 s/d 10.0</strong> (standar <strong>8.0</strong>).
+              Kontribusi nilai dihitung dengan mengalikan skor kualitas dengan <strong>{bKualitasRatio.toFixed(2)}</strong>.
             </p>
           </div>
 
@@ -109,7 +133,7 @@ export const ScoringRulesCard: React.FC<{ currentDocsCount: number }> = ({
               3. Rumus Nilai Akhir:
             </h5>
             <p className="font-mono text-indigo-900 font-medium">
-              Nilai Akhir = (Skor Kelengkapan × 0.6) + (Skor Kualitas × 0.4)
+              Nilai Akhir = (Skor Kelengkapan × {bKelengkapanRatio.toFixed(2)}) + (Skor Kualitas × {bKualitasRatio.toFixed(2)})
             </p>
           </div>
         </div>

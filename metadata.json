@@ -1,6 +1,6 @@
 {
   "name": "Kalkulator Administrasi Kominfo Ormawa",
-  "description": "Kalkulator penilaian administrasi Kominfo untuk Ormawa berdasarkan kelengkapan 4 dokumen utama dan kualitas file.",
+  "description": "Kalkulator penilaian administrasi Kominfo Ormawa dengan presensi forum Lingkar Kominfo, keaktifan media partner (medpart), kelengkapan berkas dokumen, dan ekspor Excel otomatis.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

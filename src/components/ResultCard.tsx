@@ -3,37 +3,45 @@ import {
   Check,
   Copy,
   Calculator,
-  Award,
   FileCheck2,
   SlidersHorizontal,
   BookmarkPlus,
+  Users,
   Share2,
 } from 'lucide-react';
-import { CalculationResult, OrmawaData } from '../types';
-import { generateSummaryReport } from '../utils/calculator';
+import { CalculationResult, OrmawaData, DocumentItem } from '../types';
+import { generateSummaryReport, hitungKehadiran, getMedpartLevel } from '../utils/calculator';
 
 interface ResultCardProps {
   data: OrmawaData;
   result: CalculationResult;
+  docList?: DocumentItem[];
   onSave?: () => void;
+  onOpenWeightModal?: () => void;
 }
 
 export const ResultCard: React.FC<ResultCardProps> = ({
   data,
   result,
+  docList,
   onSave,
+  onOpenWeightModal,
 }) => {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const bKelengkapanRatio = (result.bobotKelengkapan / 100).toFixed(2);
+  const bKualitasRatio = (result.bobotKualitas / 100).toFixed(2);
+  const kehadiran = hitungKehadiran(data.kehadiranLingkar);
+  const medpartInfo = getMedpartLevel(data.jumlahMedpart ?? 0);
+
   const handleCopy = async () => {
-    const text = generateSummaryReport(data, result);
+    const text = generateSummaryReport(data, result, docList);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -106,9 +114,14 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 <FileCheck2 className="w-4 h-4 text-emerald-600" />
                 Kelengkapan Dokumen
               </span>
-              <span className="font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">
-                Bobot 60%
-              </span>
+              <button
+                type="button"
+                onClick={onOpenWeightModal}
+                className="font-semibold text-emerald-700 bg-emerald-100/70 hover:bg-emerald-200/70 px-2 py-0.5 rounded transition-colors"
+                title="Klik untuk ubah bobot persentase"
+              >
+                Bobot {result.bobotKelengkapan}%
+              </button>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
               <div>
@@ -135,9 +148,14 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 <SlidersHorizontal className="w-4 h-4 text-blue-600" />
                 Kualitas File
               </span>
-              <span className="font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded">
-                Bobot 40%
-              </span>
+              <button
+                type="button"
+                onClick={onOpenWeightModal}
+                className="font-semibold text-blue-700 bg-blue-100/70 hover:bg-blue-200/70 px-2 py-0.5 rounded transition-colors"
+                title="Klik untuk ubah bobot persentase"
+              >
+                Bobot {result.bobotKualitas}%
+              </button>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
               <div>
@@ -156,17 +174,70 @@ export const ResultCard: React.FC<ResultCardProps> = ({
           </div>
         </div>
 
+        {/* Info Tambahan: Kehadiran Lingkar & Keaktifan Medpart */}
+        <div className="space-y-2">
+          {/* Kehadiran Lingkar Kominfo Highlight Card */}
+          <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs text-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-semibold text-indigo-950 block">
+                  Kehadiran Lingkar Kominfo:
+                </span>
+                <span className="text-slate-500 text-[11px]">
+                  {kehadiran.detailText}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-mono font-bold text-sm text-indigo-700 block">
+                {kehadiran.ratio} Hadir
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                ({kehadiran.persentase}%)
+              </span>
+            </div>
+          </div>
+
+          {/* Keaktifan Media Partner (Medpart) Highlight Card */}
+          <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center justify-between text-xs text-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <Share2 className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-semibold text-blue-950 block">
+                  Keaktifan Bermedpart:
+                </span>
+                <span className="text-slate-500 text-[11px]">
+                  {medpartInfo.description}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-mono font-bold text-sm text-blue-700 block">
+                {medpartInfo.count} Kali
+              </span>
+              <span className="text-[10px] text-blue-600 font-medium font-mono">
+                {medpartInfo.label}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Calculation Formula Detailed Step */}
-        <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-slate-700 space-y-2">
-          <div className="flex items-center justify-between font-semibold text-indigo-950">
-            <span>Rincian Rumus Terupdate</span>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 space-y-2">
+          <div className="flex items-center justify-between font-semibold text-slate-900">
+            <span>Rincian Rumus Mengikuti Bobot Anda</span>
             <span className="font-mono text-[11px] text-indigo-700">
-              (Kelengkapan × 0.6) + (Kualitas × 0.4)
+              (Kelengkapan × {bKelengkapanRatio}) + (Kualitas × {bKualitasRatio})
             </span>
           </div>
-          <div className="p-2.5 bg-white rounded-lg border border-indigo-100 font-mono text-xs flex flex-wrap items-center justify-between gap-1 text-slate-800">
+          <div className="p-2.5 bg-white rounded-lg border border-slate-200 font-mono text-xs flex flex-wrap items-center justify-between gap-1 text-slate-800">
             <span>
-              ({result.skorKelengkapan.toFixed(1)} × 0.6) + ({result.skorKualitas.toFixed(1)} × 0.4)
+              ({result.skorKelengkapan.toFixed(1)} × {bKelengkapanRatio}) + ({result.skorKualitas.toFixed(1)} × {bKualitasRatio})
             </span>
             <span className="text-indigo-600 font-bold">
               = {result.kontribusiKelengkapan.toFixed(2)} + {result.kontribusiKualitas.toFixed(2)} = {result.nilaiAkhir.toFixed(2)}
@@ -178,51 +249,45 @@ export const ResultCard: React.FC<ResultCardProps> = ({
         <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
           <button
             type="button"
-            id="btn-copy-summary"
-            onClick={handleCopy}
-            className={`w-full sm:flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border transition-all ${
-              copied
-                ? 'bg-emerald-600 border-emerald-600 text-white'
-                : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900 shadow-xs'
+            id="btn-save-record"
+            onClick={handleSave}
+            className={`w-full sm:flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm ${
+              saved
+                ? 'bg-emerald-600 text-white'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white active:bg-indigo-800'
             }`}
           >
-            {copied ? (
+            {saved ? (
               <>
                 <Check className="w-4 h-4" />
-                Tersalin ke Clipboard!
+                Tersimpan di Riwayat
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4" />
-                Salin Format Ringkasan (WA)
+                <BookmarkPlus className="w-4 h-4" />
+                Simpan ke Riwayat Penilaian
               </>
             )}
           </button>
 
-          {onSave && (
-            <button
-              type="button"
-              id="btn-save-record"
-              onClick={handleSave}
-              className={`w-full sm:w-auto py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border transition-all ${
-                saved
-                  ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
-              }`}
-            >
-              {saved ? (
-                <>
-                  <Check className="w-4 h-4 text-indigo-600" />
-                  Tersimpan!
-                </>
-              ) : (
-                <>
-                  <BookmarkPlus className="w-4 h-4 text-slate-600" />
-                  Simpan Riwayat
-                </>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            id="btn-copy-summary"
+            onClick={handleCopy}
+            className="w-full sm:w-auto py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 active:bg-slate-300 transition-colors flex items-center justify-center gap-2"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span className="text-emerald-700">Tersalin!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4 text-slate-500" />
+                Salin Rekap Teks
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

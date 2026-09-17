@@ -37,8 +37,12 @@ const PENILAIAN_SQL_SCHEMA = `CREATE TABLE IF NOT EXISTS penilaian_ormawa (
   skor_kelengkapan NUMERIC DEFAULT 0,
   nilai_akhir NUMERIC DEFAULT 0,
   predikat TEXT,
+  kehadiran_lingkar JSONB DEFAULT '{}'::jsonb,
+  jumlah_medpart INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE penilaian_ormawa ADD COLUMN IF NOT EXISTS kehadiran_lingkar JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE penilaian_ormawa ADD COLUMN IF NOT EXISTS jumlah_medpart INTEGER DEFAULT 0;
 ALTER TABLE penilaian_ormawa DISABLE ROW LEVEL SECURITY;`;
 
 const MASTER_SQL_SCHEMA = `-- TABEL TERPISAH: Master Daftar Nama Ormawa
@@ -159,6 +163,8 @@ app.get("/api/ormawa", async (_req, res) => {
       skorKelengkapan: Number(row.skor_kelengkapan),
       nilaiAkhir: Number(row.nilai_akhir),
       predikat: row.predikat,
+      kehadiranLingkar: row.kehadiran_lingkar || undefined,
+      jumlahMedpart: typeof row.jumlah_medpart === 'number' ? row.jumlah_medpart : 0,
       timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
     }));
 
@@ -178,7 +184,7 @@ app.post("/api/ormawa", async (req, res) => {
     const body = req.body;
     const recordId = body.id || `ormawa_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    const payload = {
+    const payload: any = {
       id: recordId,
       nama_ormawa: body.namaOrmawa || "Ormawa Tanpa Nama",
       sop_press_release: Boolean(body.sopPressRelease),
@@ -189,14 +195,32 @@ app.post("/api/ormawa", async (req, res) => {
       skor_kelengkapan: Number(body.skorKelengkapan) || 0,
       nilai_akhir: Number(body.nilaiAkhir) || 0,
       predikat: body.predikat || "",
+      jumlah_medpart: Math.max(0, Math.floor(Number(body.jumlahMedpart) || 0)),
       created_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    if (body.kehadiranLingkar) {
+      payload.kehadiran_lingkar = body.kehadiranLingkar;
+    }
+
+    let { data, error } = await supabase
       .from("penilaian_ormawa")
       .upsert(payload, { onConflict: "id" })
       .select()
       .single();
+
+    // Fallback if column not yet added to remote table
+    if (error && (error.code === '42703' || error.message?.includes('kehadiran_lingkar') || error.message?.includes('jumlah_medpart'))) {
+      delete payload.kehadiran_lingkar;
+      delete payload.jumlah_medpart;
+      const retry = await supabase
+        .from("penilaian_ormawa")
+        .upsert(payload, { onConflict: "id" })
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return res.status(400).json({ error: error.message, code: error.code });
@@ -215,6 +239,8 @@ app.post("/api/ormawa", async (req, res) => {
         skorKelengkapan: Number(data.skor_kelengkapan),
         nilaiAkhir: Number(data.nilai_akhir),
         predikat: data.predikat,
+        kehadiranLingkar: data.kehadiran_lingkar || body.kehadiranLingkar,
+        jumlahMedpart: Number(data.jumlah_medpart ?? body.jumlahMedpart ?? 0),
         timestamp: new Date(data.created_at).getTime(),
       },
     });

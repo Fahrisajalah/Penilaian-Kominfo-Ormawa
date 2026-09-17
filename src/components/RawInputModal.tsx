@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, ClipboardPaste, Check, AlertCircle, Sparkles } from 'lucide-react';
-import { OrmawaData } from '../types';
-import { generateRawText, parseRawText } from '../utils/calculator';
+import { OrmawaData, DocumentItem } from '../types';
+import { generateRawText, parseRawText, DEFAULT_DOKUMEN_LIST } from '../utils/calculator';
 
 interface RawInputModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentData: OrmawaData;
+  docList?: DocumentItem[];
   onApply: (data: Partial<OrmawaData>) => void;
 }
 
@@ -14,6 +15,7 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
   isOpen,
   onClose,
   currentData,
+  docList = DEFAULT_DOKUMEN_LIST,
   onApply,
 }) => {
   const [text, setText] = useState('');
@@ -21,42 +23,34 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setText(generateRawText(currentData));
+      setText(generateRawText(currentData, docList));
     }
-  }, [isOpen, currentData]);
+  }, [isOpen, currentData, docList]);
 
   useEffect(() => {
     if (text) {
-      setParsedPreview(parseRawText(text));
+      setParsedPreview(parseRawText(text, docList));
     }
-  }, [text]);
+  }, [text, docList]);
 
   if (!isOpen) return null;
 
   const handleApply = () => {
-    const parsed = parseRawText(text);
+    const parsed = parseRawText(text, docList);
     onApply(parsed);
     onClose();
   };
 
   const handlePasteExample = (allAda: boolean = false) => {
-    if (allAda) {
-      setText(`Data Ormawa:
+    const sampleDocs = docList.map((d, i) => {
+      if (allAda) return `- ${d.label}: Ada`;
+      return `- ${d.label}: ${i === docList.length - 1 ? 'Tidak Ada' : 'Ada'}`;
+    });
+
+    setText(`Data Ormawa:
 - Nama Ormawa: BEM FIK
-- SOP Press Release: Ada
-- Content Planner: Ada
-- Insight Bulanan Sosmed: Ada
-- SOP Medpart: Ada
-- Skor Kualitas File (1-10): 9.2`);
-    } else {
-      setText(`Data Ormawa:
-- Nama Ormawa: BEM FIK
-- SOP Press Release: Ada
-- Content Planner: Ada
-- Insight Bulanan Sosmed: Ada
-- SOP Medpart: Tidak Ada
-- Skor Kualitas File (1-10): 8.5`);
-    }
+${sampleDocs.join('\n')}
+- Skor Kualitas File (1-10): ${allAda ? '9.0' : '8.0'}`);
   };
 
   return (
@@ -92,14 +86,14 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
         {/* Content */}
         <div className="p-6 space-y-4 overflow-y-auto">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Format yang didukung: Nama, 4 Dokumen (Ada/Tidak Ada), & Skor Kualitas</span>
+            <span>Format: Nama, {docList.length} Dokumen (Ada/Tidak Ada), & Skor Kualitas (std: 8.0)</span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => handlePasteExample(false)}
                 className="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
               >
-                <Sparkles className="w-3 h-3" /> Contoh 3 Dokumen
+                <Sparkles className="w-3 h-3" /> Contoh Parsial
               </button>
               <span className="text-slate-300">|</span>
               <button
@@ -107,7 +101,7 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
                 onClick={() => handlePasteExample(true)}
                 className="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
               >
-                Contoh 4 Dokumen
+                Semua Lengkap
               </button>
             </div>
           </div>
@@ -117,7 +111,7 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
             rows={8}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Data Ormawa:\n- Nama Ormawa: BEM FIK\n- SOP Press Release: Ada\n- Content Planner: Ada\n- Insight Bulanan Sosmed: Ada\n- SOP Medpart: Tidak Ada\n- Skor Kualitas File (1-10): 8.5`}
+            placeholder={`Data Ormawa:\n- Nama Ormawa: BEM FIK\n- Skor Kualitas File (1-10): 8.0`}
             className="w-full font-mono text-sm p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 leading-relaxed"
           />
 
@@ -138,57 +132,38 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
                 <strong className="text-slate-800">
                   {parsedPreview.skorKualitas !== undefined
                     ? parsedPreview.skorKualitas
-                    : '-'}
+                    : 8.0}
                 </strong>
               </div>
               <div className="col-span-2 pt-1 border-t border-slate-200/60 flex flex-wrap gap-2">
-                <span
-                  className={`px-2 py-0.5 rounded font-medium ${
-                    parsedPreview.sopPressRelease
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  Press Release: {parsedPreview.sopPressRelease ? 'Ada' : 'Tidak'}
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded font-medium ${
-                    parsedPreview.contentPlanner
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  Planner: {parsedPreview.contentPlanner ? 'Ada' : 'Tidak'}
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded font-medium ${
-                    parsedPreview.insightSosmed
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  Insight: {parsedPreview.insightSosmed ? 'Ada' : 'Tidak'}
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded font-medium ${
-                    parsedPreview.sopMedpart
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  Medpart: {parsedPreview.sopMedpart ? 'Ada' : 'Tidak'}
-                </span>
+                {docList.map((doc) => {
+                  const isAvail = parsedPreview.docs && typeof parsedPreview.docs[doc.id] === 'boolean'
+                    ? parsedPreview.docs[doc.id]
+                    : Boolean(parsedPreview[doc.id]);
+                  return (
+                    <span
+                      key={doc.id}
+                      className={`px-2 py-0.5 rounded font-medium ${
+                        isAvail
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {doc.label}: {isAvail ? 'Ada' : 'Tidak'}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors"
           >
             Batal
           </button>
@@ -196,9 +171,10 @@ export const RawInputModal: React.FC<RawInputModalProps> = ({
             type="button"
             id="btn-apply-raw"
             onClick={handleApply}
-            className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
           >
-            <Check className="w-4 h-4" /> Terapkan & Hitung
+            <Check className="w-4 h-4" />
+            Terapkan ke Form Penilaian
           </button>
         </div>
       </div>
